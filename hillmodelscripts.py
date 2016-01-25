@@ -20,31 +20,45 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import hillmodel as hm
+import hillmodel_test as hm
+reload (hm)
+import pdb
 
-def do3DExample():
+def doExample():
     # specify the full path to your file, unless it is in the same directory
-    networkfile = '/Users/bcummins/GIT/DSGRN/networks/3D_Example.txt'  
-
-    # for didactic purposes, I am writing a sample file; generally you will be given the sample file
-    with open('samples.txt','w') as f:
-        f.write('L(X,Y) 1.2\nU(X,Y) 3.4\nT(X,Y) 1.5\nL(Y,Z) 1.0\nU(Y,Z) 2.5\nT(Y,Z) 2.4\nL(Z,X) 0.6\nU(Z,X) 2.1\nT(Z,X) 2.0')
-    samplefile='samples.txt'
+    networkfile = 'C://Users//Michael//Documents//DSGRN//networks//13D_p53_strong.txt'
 
     # choose a Hill exponent
     hillexp = 10
+    
+    
+    raw_samples = 'C://Users//Michael//Documents//40535.txt'
+    samples = 'C://Users//Michael//Documents//samples.txt'
+    f=open(raw_samples,'r')
+    for line in f:
+        if '->' in line:
+            line = line.replace("{{","")
+            line = line.replace("\n","")
+            line = line.replace("}}","")
+            file_ = open(samples, 'w')
+            file_.write(line)
+            file_.close()
+    
+
+    samplefile2 = 'C://Users//Michael//Documents//samples.txt'
+    #samplefile2 = 'C://Users//Michael//Documents//13D_samples.txt'
 
     # make an instance of class hillmodel
-    Example3D = hm.hillmodel(networkfile,samplefile,hillexp)
+    Example = hm.hillmodel(networkfile,samplefile2,hillexp)
 
     # choose initial conditions and time period
-    y0 = [1.0, 2.0, 1.5] # there are three variables in this network
+    y0 = [1.0 for x in range(13)] # there are 13 variables in this network
     t0 = 0
     t1 = 10 # start at 0 and run for 10 time units
     dt = 0.01 # give me a new data point every hundredth of a time unit
 
     # run the Hill model
-    times, timeseries = Example3D.simulateHillModel(y0,t0,t1,dt) 
+    times, timeseries = Example.simulateHillModel(y0,t0,t1,dt) 
 
     # choose plotting options
     plotoptions={'linewidth':2}
@@ -54,7 +68,7 @@ def do3DExample():
     figuresize = (15,10)
 
     # plot the results 
-    Example3D.plotResults(times,timeseries,plotoptions,legendoptions,figuresize)
+    Example.plotResults(times,timeseries,plotoptions,legendoptions,figuresize)
 
 if __name__ == '__main__':
-    do3DExample()
+    doExample()

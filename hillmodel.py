@@ -27,6 +27,7 @@ import matplotlib
 font = {'family' : 'normal',
         'size'   : 22}
 matplotlib.rc('font', **font)
+import pdb
 
 class hillmodel(object):
     '''
@@ -47,7 +48,7 @@ class hillmodel(object):
 
         '''
         eqnstr,self.varnames = self._parseEqns(networkfile)
-        parameternames,samples = self._parseSamples(self.varnames,samplefile)
+        parameternames,samples = self._parseSamples2(self.varnames,samplefile)
         self.eqns=self._makeHillEqns(eqnstr,parameternames,samples,hillexp)
 
     def simulateHillModel(self,initialconditions,initialtime,finaltime,timestep):
@@ -129,11 +130,36 @@ class hillmodel(object):
                 p=p.replace(v,str(k))
             parameternames.append(p)
         return parameternames,samples
+        
+    def _parseSamples2(self,varnames,fname='samples.txt'):
+        # Private parser.
+        f=open(fname,'r')
+        pnames=[]
+        samples=[]
+        lines = f.readlines()
+        K=lines[0].split()
+        #K=lines[1].split()
+        prefix = ''
+        for word in K:
+            if word[:-1].isdigit() == True or '/' in word:
+                samples.append(word[:-1])
+            elif word.isdigit() == True or '/' in word:
+                samples.append(word)
+            elif '[' in word:
+                prefix = word
+            elif ']' in word:
+                pnames.append(prefix + word)
+        parameternames=[]
+        for p in pnames:
+            for k,v in enumerate(varnames):
+                p=p.replace(v,str(k))
+            parameternames.append(p)
+        return parameternames,samples
 
-    def _makeHillStrs(self,U,L,T,n,j):
+    def _makeHillStrs(self,U,L,T,n,J):
         # Private constructor.
         scalar = "("+U+"-"+L+")"
-        Xn = "X["+j+"]**"+n
+        Xn = "X["+J+"]**"+n
         Tn = T+"**"+n
         denom = "("+Xn+"+"+Tn+")"
         neghill=scalar+"*"+Tn+"/"+denom+" + "+ L
@@ -145,10 +171,11 @@ class hillmodel(object):
         # X is not yet defined; eval a lambda function
         eqns=[]
         for k,e in enumerate(eqnstr):
+            e2 = e
             K=str(k)
             for j in range(len(eqnstr)):
                 J=str(j)
-                if J+' ' in e: 
+                if J in e2.split(): 
                     # if j affects k, find U,L,T in parameternames
                     U,L,T=None,None,None
                     for p,v in zip(parameternames,samples):
@@ -159,7 +186,22 @@ class hillmodel(object):
                             break
                     # substitute the negative and positive hill strings
                     neghill,poshill=self._makeHillStrs(U,L,T,str(n),J)
-                    e=e.replace(J+' n',neghill).replace(J+' p',poshill)
+                    e_list = e.split()
+                    marked = 0
+
+                    for i in range(len(e_list) - 1):
+                        if e_list[i] == J and e_list[i+1] == 'p':
+                            e_list[i] = poshill
+                            del e_list[i+1]
+                            marked = i
+                        elif e_list[i] == J and e_list[i+1] == 'n':
+                            e_list[i] = neghill
+                            del e_list[i+1]
+                            marked = i 
+                    for i in range(len(e_list) - 1):
+                        if i != marked:
+                            e_list[i] = e_list[i] + ' '        
+                    e = ''.join(e_list)
             # make a lambda function for each equation
             e="lambda X: -X["+K+"] + " + e
             eqns.append(eval(e))

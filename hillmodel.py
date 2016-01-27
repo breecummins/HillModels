@@ -107,7 +107,7 @@ class hillmodel(object):
         for l in f:
             L=l.split(' : ')
             varnames.append(L[0])
-            eqns.append(L[1])
+            eqns.append(L[1].replace(')',"").replace('(',"")  ) #3D_Clock's 55.txt has (1 n) as an eq
         f.close()
         eqnstr=[]
         for e in eqns:

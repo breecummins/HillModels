@@ -20,20 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import hillmodel_test as hm
+import hillmodel as hm
 reload (hm)
 import pdb
 
 def doExample():
     # specify the full path to your file, unless it is in the same directory
-    networkfile = 'C://Users//Michael//Documents//DSGRN//networks//13D_p53_strong.txt'
+    networkfile = 'C://Users//Michael//Documents//_rsch//DSGRN//networks//3D_Example.txt'
 
     # choose a Hill exponent
     hillexp = 10
     
-    
-    raw_samples = 'C://Users//Michael//Documents//40535.txt'
-    samples = 'C://Users//Michael//Documents//samples.txt'
+    raw_samples = 'C://Users//Michael//Documents//_rsch//DSGRN_outputs//3D_Example//13.txt'
+    samples = 'C://Users//Michael//Documents//_rsch//DSGRN_outputs//3D_Example//samples.txt'
     f=open(raw_samples,'r')
     for line in f:
         if '->' in line:
@@ -45,14 +44,14 @@ def doExample():
             file_.close()
     
 
-    samplefile2 = 'C://Users//Michael//Documents//samples.txt'
-    #samplefile2 = 'C://Users//Michael//Documents//13D_samples.txt'
+    samplefile2 = 'C://Users//Michael//Documents//_rsch//DSGRN_outputs//3D_Example//samples.txt'
 
     # make an instance of class hillmodel
     Example = hm.hillmodel(networkfile,samplefile2,hillexp)
 
     # choose initial conditions and time period
-    y0 = [1.0 for x in range(13)] # there are 13 variables in this network
+    #y0 = [1.0, 2.0, 1.5]
+    y0 = [0.2 for x in range(3)] # there are Q variables in this network, so set range(Q)
     t0 = 0
     t1 = 10 # start at 0 and run for 10 time units
     dt = 0.01 # give me a new data point every hundredth of a time unit

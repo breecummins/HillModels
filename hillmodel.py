@@ -24,9 +24,11 @@ import numpy as np
 from scipy.integrate import ode
 import matplotlib.pyplot as plt
 import matplotlib
+"""
 font = {'family' : 'normal',
         'size'   : 22}
 matplotlib.rc('font', **font)
+"""
 import pdb
 
 class hillmodel(object):
@@ -105,7 +107,7 @@ class hillmodel(object):
         for l in f:
             L=l.split(' : ')
             varnames.append(L[0])
-            eqns.append(L[1])
+            eqns.append(L[1].replace(')',"").replace('(',"")  ) #3D_Clock's 55.txt has (1 n) as an eq
         f.close()
         eqnstr=[]
         for e in eqns:
@@ -113,47 +115,47 @@ class hillmodel(object):
                 e=e.replace('~'+v,str(k)+' n').replace(v,str(k)+' p').replace(')(',')*(')
             eqnstr.append(e)
         return eqnstr,varnames
-
-    def _parseSamples(self,varnames,fname='samples.txt'):
-        # Private parser.
-        f=open(fname,'r')
-        pnames=[]
-        samples=[]
-        for l in f:
-            L=l.split()
-            pnames.append(L[0])
-            samples.append(L[1])
-        f.close()
-        parameternames=[]
-        for p in pnames:
-            for k,v in enumerate(varnames):
-                p=p.replace(v,str(k))
-            parameternames.append(p)
-        return parameternames,samples
         
     def _parseSamples2(self,varnames,fname='samples.txt'):
         # Private parser.
         f=open(fname,'r')
         pnames=[]
-        samples=[]
+        samples_frac=[]
         lines = f.readlines()
         K=lines[0].split()
         #K=lines[1].split()
         prefix = ''
-        for word in K:
+        for word in K[:-1]:
             if word[:-1].isdigit() == True or '/' in word:
-                samples.append(word[:-1])
-            elif word.isdigit() == True or '/' in word:
-                samples.append(word)
-            elif '[' in word:
+                samples_frac.append(word[:-1])
+            elif '[' in word: #L[X,
                 prefix = word
-            elif ']' in word:
+            elif ']' in word: #Y]
                 pnames.append(prefix + word)
+        samples_frac.append(K[-1])
         parameternames=[]
+        samples=[]
         for p in pnames:
             for k,v in enumerate(varnames):
                 p=p.replace(v,str(k))
             parameternames.append(p)
+        for value in samples_frac:
+            if '/' in value:
+                numerator = ''
+                denominator = ''
+                denomtime = False
+                for i in value: #convert fraction to decimal so simulateHillModel can work
+                    if i.isdigit() == True and denomtime == False:
+                        numerator = numerator + i
+                    elif i == '/':
+                        denomtime = True
+                    elif i.isdigit() == True and denomtime == True:
+                        denominator = denominator + i
+                decimal = float(numerator)/float(denominator)
+                samples.append(str(decimal))
+
+            else:
+                samples.append(value)
         return parameternames,samples
 
     def _makeHillStrs(self,U,L,T,n,J):
@@ -171,11 +173,11 @@ class hillmodel(object):
         # X is not yet defined; eval a lambda function
         eqns=[]
         for k,e in enumerate(eqnstr):
-            e2 = e
+            e2 = e #n and p are replaced during J loop, so 'if J in e' cond must use original copy of e, not changed e
             K=str(k)
             for j in range(len(eqnstr)):
                 J=str(j)
-                if J in e2.split(): 
+                if J in e2.split(): #IE) when replacing 0p+10p, all '0 p' are replaced, so use list instead of str to replace
                     # if j affects k, find U,L,T in parameternames
                     U,L,T=None,None,None
                     for p,v in zip(parameternames,samples):
@@ -188,8 +190,7 @@ class hillmodel(object):
                     neghill,poshill=self._makeHillStrs(U,L,T,str(n),J)
                     e_list = e.split()
                     marked = 0
-
-                    for i in range(len(e_list) - 1):
+                    for i in range(len(e_list) - 1): #-1 b/c [i+1]. This does replacement
                         if e_list[i] == J and e_list[i+1] == 'p':
                             e_list[i] = poshill
                             del e_list[i+1]

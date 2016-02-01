@@ -23,8 +23,8 @@
 import numpy as np
 from scipy.integrate import ode
 import matplotlib.pyplot as plt
-import matplotlib
 """
+import matplotlib
 font = {'family' : 'normal',
         'size'   : 22}
 matplotlib.rc('font', **font)
@@ -103,12 +103,19 @@ class hillmodel(object):
         # Private parser.
         f=open(fname,'r')
         varnames=[]
-        eqns=[]
+        eqns0=[]
         for l in f:
             L=l.split(' : ')
             varnames.append(L[0])
-            eqns.append(L[1].replace(')',"").replace('(',"")  ) #3D_Clock's 55.txt has (1 n) as an eq
+	    #the following line (only 1 line) is for ubuntu only b/c appends X2\n; in windows, X2\n auto interpreted as X2
+            equation = L[1][:-1]        
+	    equation = equation.replace(')('," * ") #IE) 3D_Cycle's 224.txt has (X1)(~X2) as an eqn
+            eqns0.append(equation)
         f.close()
+	eqns = []
+	for equation in eqns0: #this is done after to prevent mixing up eqns like (1 n) w/ eqns like (X1)(~X2) 
+            equation = equation.replace(')',"").replace('(',"") #IE) 3D_Clock's 55.txt has (1 n) as an eqn    
+            eqns.append(equation) 
         eqnstr=[]
         for e in eqns:
             for k,v in enumerate(varnames):
@@ -153,7 +160,6 @@ class hillmodel(object):
                         denominator = denominator + i
                 decimal = float(numerator)/float(denominator)
                 samples.append(str(decimal))
-
             else:
                 samples.append(value)
         return parameternames,samples

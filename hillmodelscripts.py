@@ -26,13 +26,13 @@ import pdb
 
 def doExample():
     # specify the full path to your file, unless it is in the same directory
-    networkfile = 'C://Users//Michael//Documents//_rsch//DSGRN//networks//3D_Example.txt'
+    networkfile = '/home/mike/DSGRN-master/networks/3D_Cycle.txt'
 
     # choose a Hill exponent
     hillexp = 10
     
-    raw_samples = 'C://Users//Michael//Documents//_rsch//DSGRN_outputs//3D_Example//13.txt'
-    samples = 'C://Users//Michael//Documents//_rsch//DSGRN_outputs//3D_Example//samples.txt'
+    raw_samples = '/home/mike/DSGRN_outputs/3D_Cycle/anyFCs/4737.txt'
+    samples = '/home/mike/DSGRN_outputs/samples.txt'
     f=open(raw_samples,'r')
     for line in f:
         if '->' in line:
@@ -44,14 +44,13 @@ def doExample():
             file_.close()
     
 
-    samplefile2 = 'C://Users//Michael//Documents//_rsch//DSGRN_outputs//3D_Example//samples.txt'
+    samplefile2 = '/home/mike/DSGRN_outputs/samples.txt'
 
     # make an instance of class hillmodel
     Example = hm.hillmodel(networkfile,samplefile2,hillexp)
 
     # choose initial conditions and time period
-    #y0 = [1.0, 2.0, 1.5]
-    y0 = [0.2 for x in range(3)] # there are Q variables in this network, so set range(Q)
+    y0 = [1.0 for x in range(3)] # there are 13 variables in this network
     t0 = 0
     t1 = 10 # start at 0 and run for 10 time units
     dt = 0.01 # give me a new data point every hundredth of a time unit
@@ -61,7 +60,7 @@ def doExample():
 
     # choose plotting options
     plotoptions={'linewidth':2}
-    legendoptions={'fontsize':24,'loc':'upper left', 'bbox_to_anchor':(1, 1)} 
+    legendoptions={'fontsize':15,'loc':'upper left', 'bbox_to_anchor':(1, 1)} 
     # note: if you plt.savefig instead of plt.show, these options ensure that the 
     # legend won't be cut off, even if the legend labels are long
     figuresize = (15,10)

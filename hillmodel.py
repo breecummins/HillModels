@@ -107,13 +107,13 @@ class hillmodel(object):
         eqns0=[]
         for l in f:
             L=l.split(' : ')
-            varnames.append(L[0])
-	    #the following line (only 1 line) is for ubuntu only b/c appends X2\n; in windows, X2\n auto interpreted as X2
-            equation = L[1][:-1]
-            #the following line is for windows only
-	    #equation = L[1]        
-	    equation = equation.replace(')('," * ") #IE) 3D_Cycle's 224.txt has (X1)(~X2) as an eqn
-            eqns0.append(equation)
+	    if len(L) > 1: #for cases when L = ['\n'] as seen for case 5D_2015_10_23.txt
+            	varnames.append(L[0]) 
+		equation = L[1]         		
+	    	#the following line (only 1 line) is for ubuntu only b/c appends X2\n; in windows, X2\n auto interpreted as X2   	
+		equation = equation.replace('\n','')
+	    	equation = equation.replace(' ('," * ").replace(')('," * ") #IE) 3D_Cycle's 224.txt has (X1)(~X2) as an eqn
+            	eqns0.append(equation)
         f.close()
 	eqns = []
 	for equation in eqns0: #this is done after to prevent mixing up eqns like (1 n) w/ eqns like (X1)(~X2) 

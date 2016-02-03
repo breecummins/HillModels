@@ -77,7 +77,7 @@ class hillmodel(object):
         times,timeseries = integrate(r,initialconditions,initialtime,finaltime,timestep)
         return times,timeseries
 
-    def plotResults(self,times,timeseries,plotoptions={},legendoptions={},figuresize=()):
+    def plotResults(self,savein,times,timeseries,plotoptions={},legendoptions={},figuresize=()):
         '''
         Plot a time series.
 
@@ -97,7 +97,8 @@ class hillmodel(object):
             plt.plot(times,timeseries[:,k],label=self.varnames[k],**plotoptions)
         plt.legend(**legendoptions)
         plt.axis('tight')
-        plt.show()
+	plt.savefig(savein)
+        #plt.show()
 
     def _parseEqns(self,fname='equations.txt'):
         # Private parser.
@@ -108,7 +109,9 @@ class hillmodel(object):
             L=l.split(' : ')
             varnames.append(L[0])
 	    #the following line (only 1 line) is for ubuntu only b/c appends X2\n; in windows, X2\n auto interpreted as X2
-            equation = L[1][:-1]        
+            equation = L[1][:-1]
+            #the following line is for windows only
+	    #equation = L[1]        
 	    equation = equation.replace(')('," * ") #IE) 3D_Cycle's 224.txt has (X1)(~X2) as an eqn
             eqns0.append(equation)
         f.close()
@@ -118,8 +121,17 @@ class hillmodel(object):
             eqns.append(equation) 
         eqnstr=[]
         for e in eqns:
+	    e_list = e.split()	#list used instead of string for cases like network 5D_2016_01_16_C
             for k,v in enumerate(varnames):
-                e=e.replace('~'+v,str(k)+' n').replace(v,str(k)+' p').replace(')(',')*(')
+		if v in e_list or '~'+v in e_list: #don't split and rejoin if no need to
+			for i in range(len(e_list)):
+		    	    if e_list[i] == v:
+		        	e_list[i] = str(k)+' p'
+		    	    elif e_list[i] == '~'+v:
+				e_list[i] = str(k)+' n'
+			    if e_list[i] == '+' or e_list[i] == '*':
+			    	e_list[i] = ' '+e_list[i]+' '
+			e = ''.join(e_list)
             eqnstr.append(e)
         return eqnstr,varnames
         
@@ -133,17 +145,17 @@ class hillmodel(object):
         #K=lines[1].split()
         prefix = ''
         for word in K[:-1]:
-            if word[:-1].isdigit() == True or '/' in word:
-                samples_frac.append(word[:-1])
-            elif '[' in word: #L[X,
+            if '[' in word: #L[X,
                 prefix = word
             elif ']' in word: #Y]
                 pnames.append(prefix + word)
+	    elif word[:-1].isdigit() == True or '/' in word and '[' not in word and ']' not in word:
+                samples_frac.append(word[:-1])
         samples_frac.append(K[-1])
         parameternames=[]
         samples=[]
-        for p in pnames:
-            for k,v in enumerate(varnames):
+        for p in pnames: #for networks whose genes are numbers, list should also be used; but can't .split() p so find other soln later
+            for k,v in enumerate(varnames): 
                 p=p.replace(v,str(k))
             parameternames.append(p)
         for value in samples_frac:
@@ -178,10 +190,12 @@ class hillmodel(object):
         # Private constructor.
         # X is not yet defined; eval a lambda function
         eqns=[]
+	debug_only = []
         for k,e in enumerate(eqnstr):
             e2 = e #n and p are replaced during J loop, so 'if J in e' cond must use original copy of e, not changed e
             K=str(k)
-            for j in range(len(eqnstr)):
+	    e_list = e.split()
+            for j in range(len(eqnstr)): #eqnstr is only for genes that are heads; but a gene may be a tail yet not be a head?
                 J=str(j)
                 if J in e2.split(): #IE) when replacing 0p+10p, all '0 p' are replaced, so use list instead of str to replace
                     # if j affects k, find U,L,T in parameternames
@@ -194,24 +208,36 @@ class hillmodel(object):
                             break
                     # substitute the negative and positive hill strings
                     neghill,poshill=self._makeHillStrs(U,L,T,str(n),J)
-                    e_list = e.split()
                     marked = 0
                     for i in range(len(e_list) - 1): #-1 b/c [i+1]. This does replacement
                         if e_list[i] == J and e_list[i+1] == 'p':
                             e_list[i] = poshill
                             del e_list[i+1]
                             marked = i
+			    if i != len(e_list)-1: #the following is for equations like (X2)(~X3)
+			    	if e_list[i+1] == '*' or e_list[i-1] == '*' and (e_list[i][0] != '(' or e_list[i][-1] != ')'):
+			    		e_list[i] = '('+e_list[i]+')'
+			    else:
+			    	if e_list[i-1] == '*' and (e_list[i][0] != '(' or e_list[i][-1] != ')'):
+			    		e_list[i] = '('+e_list[i]+')'
                         elif e_list[i] == J and e_list[i+1] == 'n':
                             e_list[i] = neghill
                             del e_list[i+1]
                             marked = i 
-                    for i in range(len(e_list) - 1):
-                        if i != marked:
-                            e_list[i] = e_list[i] + ' '        
-                    e = ''.join(e_list)
+			    if i != len(e_list)-1: #the following is for equations like (X2)(~X3)
+			    	if e_list[i+1] == '*' or e_list[i-1] == '*' and (e_list[i][0] != '(' or e_list[i][-1] != ')'):
+			    		e_list[i] = '('+e_list[i]+')'
+			    else:
+			    	if e_list[i-1] == '*' and (e_list[i][0] != '(' or e_list[i][-1] != ')'):
+			    		e_list[i] = '('+e_list[i]+')'
+	       
+	    
+            e = ''.join(e_list)
             # make a lambda function for each equation
             e="lambda X: -X["+K+"] + " + e
+	    debug_only.append(e)
             eqns.append(eval(e))
+	#pdb.set_trace()
         return eqns
 
 

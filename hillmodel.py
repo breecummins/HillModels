@@ -112,23 +112,27 @@ class hillmodel(object):
 		equation = L[1]         		
 	    	#the following line (only 1 line) is for ubuntu only b/c appends X2\n; in windows, X2\n auto interpreted as X2   	
 		equation = equation.replace('\n','')
-	    	equation = equation.replace(' ('," * ").replace(')('," * ") #IE) 3D_Cycle's 224.txt has (X1)(~X2) as an eqn
+	    	equation = equation.replace(' ('," * (").replace(')(',") * (") #IE) 3D_Cycle's 224.txt has (X1)(~X2) as an eqn
             	eqns0.append(equation)
         f.close()
 	eqns = []
+	"""
 	for equation in eqns0: #this is done after to prevent mixing up eqns like (1 n) w/ eqns like (X1)(~X2) 
             equation = equation.replace(')',"").replace('(',"") #IE) 3D_Clock's 55.txt has (1 n) as an eqn    
             eqns.append(equation) 
+	"""
         eqnstr=[]
-        for e in eqns:
-	    e_list = e.split()	#list used instead of string for cases like network 5D_2016_01_16_C
-            for k,v in enumerate(varnames):
-		if v in e_list or '~'+v in e_list: #don't split and rejoin if no need to
-			for i in range(len(e_list)):
-		    	    if e_list[i] == v:
-		        	e_list[i] = str(k)+' p'
-		    	    elif e_list[i] == '~'+v:
-				e_list[i] = str(k)+' n'
+        for e in eqns0:	     
+	    e_list = e.split()	#list used instead of string for cases like network 5D_2016_01_16_C whose genes are numbers (k is # too)
+            e2 = e.replace(')',"").replace('(',"") #keep paren. in e, but remove from e2. e2_list only used for 'if v in...'
+	    e2_list = e2.split()	#e2 is used for cases w/ gene eqs in the format (X+Y)(~Z)
+	    for k,v in enumerate(varnames):
+		if v in e2_list or '~'+v in e2_list: #don't split and rejoin if no need to			
+			for i in range(len(e2_list)):
+		    	    if e2_list[i] == v: #check for in e2_list, but replace in e_list. Use .replace to keep parenthesis
+		        	e_list[i] = e_list[i].replace(v,str(k)+' p') 
+		    	    elif e2_list[i] == '~'+v: #safe to use .replace b/c only changes current position in list, not entire list/string
+		        	e_list[i] = e_list[i].replace('~'+v,str(k)+' n')
 			    if e_list[i] == '+' or e_list[i] == '*':
 			    	e_list[i] = ' '+e_list[i]+' '
 			e = ''.join(e_list)
@@ -148,16 +152,27 @@ class hillmodel(object):
             if '[' in word: #L[X,
                 prefix = word
             elif ']' in word: #Y]
-                pnames.append(prefix + word)
+                pnames.append(prefix + ' ' + word)
 	    elif word[:-1].isdigit() == True or '/' in word and '[' not in word and ']' not in word:
                 samples_frac.append(word[:-1])
         samples_frac.append(K[-1])
         parameternames=[]
         samples=[]
-        for p in pnames: #for networks whose genes are numbers, list should also be used; but can't .split() p so find other soln later
-            for k,v in enumerate(varnames): 
-                p=p.replace(v,str(k))
-            parameternames.append(p)
+        for p in pnames: #for networks whose genes are numbers, list should also be used
+	    p_list = p.split()		
+	    prefix2 = ''
+	    suffix2 = ''
+	    for i in range(len(p_list)):
+            	for k,v in enumerate(varnames): #must do it twice b/c suffix may be replaced before prefix	
+		    if p_list[i].replace('L[',"").replace(',',"") == v:
+			prefix2 = 'L['+str(k)
+		    elif p_list[i].replace('U[',"").replace(',',"") == v:
+			prefix2 = 'U['+str(k)
+		    elif p_list[i].replace('THETA[',"").replace(',',"") == v:
+			prefix2 = 'THETA['+str(k)
+		    elif p_list[i].replace(']',"") == v:
+			suffix2 = ','+str(k)+']'
+            parameternames.append(prefix2 + suffix2)
         for value in samples_frac:
             if '/' in value:
                 numerator = ''
@@ -192,12 +207,14 @@ class hillmodel(object):
         eqns=[]
 	debug_only = []
         for k,e in enumerate(eqnstr):
-            e2 = e #n and p are replaced during J loop, so 'if J in e' cond must use original copy of e, not changed e
+	    e2 = e.replace(')',"").replace('(',"") #keep paren. in e, but remove from e2. e2 is used for if statements
+       	    #e2 is used for cases w/ gene eqs in the format (X+Y)(~Z)
+            e_orig = e2.split()	#n and p are replaced during J loop, so 'if J in e' cond must use original copy of e, not changed e
             K=str(k)
 	    e_list = e.split()
-            for j in range(len(eqnstr)): #eqnstr is only for genes that are heads; but a gene may be a tail yet not be a head?
+            for j in range(len(eqnstr)):
                 J=str(j)
-                if J in e2.split(): #IE) when replacing 0p+10p, all '0 p' are replaced, so use list instead of str to replace
+                if J in e_orig: #IE) when replacing 0p+10p, all '0 p' are replaced, so use list instead of str to replace
                     # if j affects k, find U,L,T in parameternames
                     U,L,T=None,None,None
                     for p,v in zip(parameternames,samples):
@@ -206,32 +223,24 @@ class hillmodel(object):
                         if filter(None,[U,L,T])==[U,L,T]: 
                             #quit when U,L,T assigned
                             break
-                    # substitute the negative and positive hill strings
+                    # substitute the negative and positive hill string
                     neghill,poshill=self._makeHillStrs(U,L,T,str(n),J)
-                    marked = 0
+            	   
                     for i in range(len(e_list) - 1): #-1 b/c [i+1]. This does replacement
-                        if e_list[i] == J and e_list[i+1] == 'p':
-                            e_list[i] = poshill
-                            del e_list[i+1]
-                            marked = i
-			    if i != len(e_list)-1: #the following is for equations like (X2)(~X3)
-			    	if e_list[i+1] == '*' or e_list[i-1] == '*' and (e_list[i][0] != '(' or e_list[i][-1] != ')'):
-			    		e_list[i] = '('+e_list[i]+')'
+                        if e_orig[i] == J and e_orig[i+1] == 'p':
+			    e_list[i] = e_list[i].replace(J,poshill)
+			    if ')' not in e_list[i+1]: #don't delete ')' from ')n' or ')p'
+                            	del e_list[i+1]
+			    	del e_orig[i+1] #make e_orig retain same index of #s and p/n's as e_list
 			    else:
-			    	if e_list[i-1] == '*' and (e_list[i][0] != '(' or e_list[i][-1] != ')'):
-			    		e_list[i] = '('+e_list[i]+')'
-                        elif e_list[i] == J and e_list[i+1] == 'n':
-                            e_list[i] = neghill
-                            del e_list[i+1]
-                            marked = i 
-			    if i != len(e_list)-1: #the following is for equations like (X2)(~X3)
-			    	if e_list[i+1] == '*' or e_list[i-1] == '*' and (e_list[i][0] != '(' or e_list[i][-1] != ')'):
-			    		e_list[i] = '('+e_list[i]+')'
+				e_list[i+1] = e_list[i+1].replace('p','')
+                        elif e_orig[i] == J and e_orig[i+1] == 'n':
+                            e_list[i] = e_list[i].replace(J,neghill)
+			    if ')' not in e_list[i+1]: #don't delete ')' from ')n' or ')p'
+                            	del e_list[i+1]
+			    	del e_orig[i+1] #make e_orig retain same index of #s and p/n's as e_list
 			    else:
-			    	if e_list[i-1] == '*' and (e_list[i][0] != '(' or e_list[i][-1] != ')'):
-			    		e_list[i] = '('+e_list[i]+')'
-	       
-	    
+				e_list[i+1] = e_list[i+1].replace('n','')
             e = ''.join(e_list)
             # make a lambda function for each equation
             e="lambda X: -X["+K+"] + " + e
